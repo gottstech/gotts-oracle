@@ -361,7 +361,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gotts-oracle"
+name = "gotts_oracle"
 version = "0.1.0"
 dependencies = [
  "gotts_oracle_alphavantage 0.1.0",

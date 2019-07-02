@@ -1,9 +1,10 @@
 [package]
 name = "gotts_oracle_alphavantage"
 version = "0.1.0"
-description = "Alpha Vantage API client"
+description = "Alpha Vantage API clients"
+license = "Apache License v2.0"
 authors = ["Terry Zhao <terryzhao1981@gmail.com>"]
-keywords = ["finance", "stocks", "alpha", "vantage"]
+keywords = ["gotts", "oracle", "finance", "stocks", "alphavantage"]
 edition = "2018"
 
 [dependencies]

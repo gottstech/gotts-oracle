@@ -2,8 +2,8 @@
 name = "gotts_oracle_api"
 version = "0.1.0"
 authors = ["Terry Zhao <terryzhao1981@gmail.com>"]
-description = "APIs for gotts oracle, a simple."
-license = "Apache-2.0"
+description = "APIs for gotts oracle"
+license = "Apache License v2.0"
 keywords = [ "gotts", "oracle" ]
 edition = "2018"
 

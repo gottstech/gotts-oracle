@@ -1,7 +1,10 @@
 [package]
-name = "gotts-oracle"
+name = "gotts_oracle"
 version = "0.1.0"
+description = "Gotts Oracles with some data vendors API clients such as Alpha Vantage"
+license = "Apache License v2.0"
 authors = ["Terry Zhao <terryzhao1981@gmail.com>"]
+keywords = ["gotts", "oracle", "finance", "stocks", "alphavantage"]
 edition = "2018"
 
 [dependencies]
