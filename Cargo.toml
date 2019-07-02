@@ -1,0 +1,9 @@
+[package]
+name = "gotts-oracle"
+version = "0.1.0"
+authors = ["Terry Zhao <terryzhao1981@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+gotts_oracle_alphavantage = { path = "./alphavantage", version = "0.1.0" }
+gotts_oracle_api          = { path = "./api", version = "0.1.0" }
