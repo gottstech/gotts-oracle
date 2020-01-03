@@ -3,15 +3,19 @@ name = "gotts_oracle"
 version = "0.1.0"
 description = "Gotts Oracles with some data vendors API clients such as Alpha Vantage"
 license = "Apache License v2.0"
-authors = ["Terry Zhao <terryzhao1981@gmail.com>"]
+repository = "https://github.com/gottstech/gotts-oracle"
+authors = ["Gotts Developers <gotts.tech@lists.launchpad.net>"]
 keywords = ["gotts", "oracle", "finance", "stocks", "alphavantage"]
 build = "src/build/build.rs"
 edition = "2018"
 
 [dependencies]
 colored = "1.6"
+log = "0.4"
 gotts_oracle_alphavantage = { path = "./alphavantage", version = "0.1.0" }
 gotts_oracle_api          = { path = "./api", version = "0.1.0" }
+gotts_oracle_config       = { path = "./config", version = "0.1.0" }
+gotts_oracle_util         = { path = "./util", version = "0.1.0" }
 
 [build-dependencies]
 built = "0.3"

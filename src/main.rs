@@ -17,13 +17,64 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-extern crate gotts_oracle_alphavantage;
+#[macro_use]
+extern crate log;
 use gotts_oracle_alphavantage as alphavantage;
-
-extern crate gotts_oracle_api;
 use gotts_oracle_api as api;
+use gotts_oracle_config as config;
+use gotts_oracle_util::init_logger;
+
+// include build information
+pub mod built_info {
+	include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
+pub fn info_strings() -> (String, String) {
+	(
+		format!(
+			"This is Gotts-Oracle version {}{}, built for {} by {}.",
+			built_info::PKG_VERSION,
+			built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!(" (git {})", v)),
+			built_info::TARGET,
+			built_info::RUSTC_VERSION,
+		)
+		.to_string(),
+		format!(
+			"Built with profile \"{}\", features \"{}\".",
+			built_info::PROFILE,
+			built_info::FEATURES_STR,
+		)
+		.to_string(),
+	)
+}
+
+fn log_build_info() {
+	let (basic_info, detailed_info) = info_strings();
+	warn!("{}", basic_info);
+	debug!("{}", detailed_info);
+}
 
 fn main() {
+	let node_config = Some(config::initial_setup_server().unwrap_or_else(|e| {
+		panic!("Error loading server configuration: {}", e);
+	}));
+
+	if let Some(mut config) = node_config.clone() {
+		let l = config.members.as_mut().unwrap().logging.clone().unwrap();
+		init_logger(Some(l));
+
+		if let Some(file_path) = &config.config_file_path {
+			warn!(
+				"Using configuration file at {}",
+				file_path.to_str().unwrap()
+			);
+		} else {
+			warn!("Node configuration file not found, using default");
+		}
+	}
+
+	log_build_info();
+
 	//the api key integrated here is just for demo, with very limited access,
 	// please claim your own api key and set it as an environment variable before running.
 	// the free api key can be requested here: https://www.alphavantage.co/support/#api-key
