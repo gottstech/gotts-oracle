@@ -1,4 +1,5 @@
-// Copyright 2019 The Gotts Developers
+// Copyright 2018 The Grin Developers
+// Modifications Copyright 2019 The Gotts Developers
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
