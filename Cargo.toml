@@ -10,6 +10,7 @@ build = "src/build/build.rs"
 edition = "2018"
 
 [dependencies]
+clap = { version = "2.31", features = ["yaml"] }
 colored = "1.6"
 log = "0.4"
 gotts_oracle_alphavantage = { path = "./alphavantage", version = "0.1.0" }

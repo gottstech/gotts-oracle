@@ -50,7 +50,13 @@ fn comments() -> HashMap<String, String> {
 #private key for the TLS certificate
 #tls_certificate_key = \"\"
 
-#the address on which services will listen, e.g. Transaction Pool
+#Alpha Vantage API Key
+#Note: the api key integrated in the source is just for demo, with very limited access,
+# please claim your own api key and set it here.
+# the free api key can be requested here: https://www.alphavantage.co/support/#api-key
+#alpha_vantage_api_key = \"\"
+
+#the address on which services will listen
 "
 		.to_string(),
 	);

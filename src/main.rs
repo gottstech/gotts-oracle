@@ -18,7 +18,11 @@ use std::thread;
 use std::time::Duration;
 
 #[macro_use]
+extern crate clap;
+#[macro_use]
 extern crate log;
+use clap::{App, ArgMatches};
+use config::{GlobalConfig, ServerConfig};
 use gotts_oracle_alphavantage as alphavantage;
 use gotts_oracle_api as api;
 use gotts_oracle_config as config;
@@ -55,11 +59,33 @@ fn log_build_info() {
 }
 
 fn main() {
-	let node_config = Some(config::initial_setup_server().unwrap_or_else(|e| {
+	let exit_code = real_main();
+	std::process::exit(exit_code);
+}
+
+fn real_main() -> i32 {
+	let yml = load_yaml!("gotts_oracle.yml");
+	let args = App::from_yaml(yml)
+		.version(built_info::PKG_VERSION)
+		.get_matches();
+
+	// Deal with configuration file creation
+	match args.subcommand() {
+		("server", Some(server_args)) => {
+			// If it's just a server config command, do it and exit
+			if let ("config", Some(_)) = server_args.subcommand() {
+				config_command_server(config::config::SERVER_CONFIG_FILE_NAME);
+				return 0;
+			}
+		}
+		_ => {}
+	}
+
+	let oracle_config = Some(config::initial_setup_server().unwrap_or_else(|e| {
 		panic!("Error loading server configuration: {}", e);
 	}));
 
-	if let Some(mut config) = node_config.clone() {
+	if let Some(mut config) = oracle_config.clone() {
 		let l = config.members.as_mut().unwrap().logging.clone().unwrap();
 		init_logger(Some(l));
 
@@ -75,18 +101,99 @@ fn main() {
 
 	log_build_info();
 
+	// Execute subcommand
+	match args.subcommand() {
+		// server commands and options
+		("server", Some(server_args)) => server_command(Some(server_args), oracle_config.unwrap()),
+
+		// clean command
+		("clean", _) => {
+			let db_root_path = oracle_config.unwrap().members.unwrap().server.db_root;
+			println!("Cleaning oracle data directory: {}", db_root_path);
+			match std::fs::remove_dir_all(db_root_path) {
+				Ok(_) => 0,
+				Err(_) => 1,
+			}
+		}
+
+		// If nothing is specified, try to just use the config file instead
+		// this could possibly become the way to configure most things
+		// with most command line options being phased out
+		_ => server_command(None, oracle_config.unwrap()),
+	}
+}
+
+/// Create a config file in the current directory
+fn config_command_server(file_name: &str) {
+	let mut default_config = GlobalConfig::default();
+	let current_dir = std::env::current_dir().unwrap_or_else(|e| {
+		panic!("Error creating config file: {}", e);
+	});
+	let mut config_file_name = current_dir.clone();
+	config_file_name.push(file_name);
+	if config_file_name.exists() {
+		panic!(
+			"{} already exists in the current directory. Please remove it first",
+			file_name
+		);
+	}
+	default_config.update_paths(&current_dir);
+	default_config
+		.write_to_file(config_file_name.to_str().unwrap())
+		.unwrap_or_else(|e| {
+			panic!("Error creating config file: {}", e);
+		});
+
+	println!(
+		"{} file configured and created in current directory",
+		file_name
+	);
+}
+
+/// Handles the server part of the command line, mostly running, starting and
+/// stopping the Gotts Oracle server. Processes all the command line
+/// arguments to build a proper configuration and runs Gotts Oracle with that
+/// configuration.
+fn server_command(server_args: Option<&ArgMatches<'_>>, global_config: GlobalConfig) -> i32 {
+	// just get defaults from the global config
+	let server_config = global_config.members.as_ref().unwrap().server.clone();
+
+	if let Some(a) = server_args {
+		match a.subcommand() {
+			("run", _) => {
+				start_server(server_config);
+			}
+			("", _) => {
+				println!("Subcommand required, use 'gotts_oracle help server' for details");
+			}
+			(cmd, _) => {
+				println!(":: {:?}", server_args);
+				panic!(
+					"Unknown server command '{}', use 'gotts_oracle help server' for details",
+					cmd
+				);
+			}
+		}
+	} else {
+		start_server(server_config);
+	}
+	0
+}
+
+fn start_server(config: ServerConfig) {
 	//the api key integrated here is just for demo, with very limited access,
 	// please claim your own api key and set it as an environment variable before running.
 	// the free api key can be requested here: https://www.alphavantage.co/support/#api-key
 	//
-	let default_api_key = "2BY6TAJHCM9Z7HQT";
-	let alpha_vantage_api_key =
-		std::env::var("ALPHAVANTAGE_API_KEY").unwrap_or_else(|_| default_api_key.to_string());
-	if alpha_vantage_api_key == default_api_key {
+	let default_alpha_vantage_api_key = "2BY6TAJHCM9Z7HQT";
+	let alpha_vantage_api_key = config
+		.alpha_vantage_api_key
+		.unwrap_or_else(|| default_alpha_vantage_api_key.to_string());
+	if alpha_vantage_api_key == default_alpha_vantage_api_key {
 		println!(
 			"\n{} the default api key hardcoded is just for demo with very limited access.\
 			 \nplease claim your own api key from https://www.alphavantage.co/support/#api-key\
-			 \nand then set it as an environment variable 'ALPHAVANTAGE_API_KEY' before running.",
+			 \nand then set it into the config: gotts-oracle.toml.",
 			"warning!".to_string().bright_red(),
 		);
 	}
@@ -95,8 +202,7 @@ fn main() {
 	let shared_client = Arc::new(alphavantage::Client::new(alpha_vantage_api_key.as_str()));
 
 	//start api server
-	let oracle_bind_address =
-		std::env::var("ORACLE_BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1:8008".to_string());
+	let oracle_bind_address = config.api_http_addr.clone();
 	println!(
 		"\ngotts oracle is serving on {}",
 		oracle_bind_address.bright_green()
@@ -106,5 +212,11 @@ fn main() {
 	if let Ok(handle) = res {
 		handle.join().expect("The thread being joined has panicked");
 	}
+
+	// Just kill process for now, otherwise the process
+	// hangs around until sigint because the API server
+	// currently has no shutdown facility
+	warn!("Shutting down...");
 	thread::sleep(Duration::from_millis(1000));
+	warn!("Shutdown complete.");
 }

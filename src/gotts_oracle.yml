@@ -1,0 +1,20 @@
+name: gotts_oracle
+about: Gotts Oracles.
+author: The Gotts Team
+
+subcommands:
+  - clean:
+      about: Clean Gotts Oracle data
+  - server:
+      about: Control the Gotts Oracle server
+      args:
+        - config_file:
+            help: Path to a gotts-oracle.toml configuration file
+            short: c
+            long: config_file
+            takes_value: true
+      subcommands:
+        - config:
+            about: Generate a configuration gotts-oracle.toml file in the current directory
+        - run:
+            about: Run the Gotts Oracle server in this console

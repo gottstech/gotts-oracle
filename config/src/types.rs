@@ -112,6 +112,9 @@ pub struct ServerConfig {
 	pub tls_certificate_file: Option<String>,
 	/// TLS certificate private key file
 	pub tls_certificate_key: Option<String>,
+
+	/// Alpha Vantage API Key
+	pub alpha_vantage_api_key: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -122,6 +125,7 @@ impl Default for ServerConfig {
 			api_secret_path: None,
 			tls_certificate_file: None,
 			tls_certificate_key: None,
+			alpha_vantage_api_key: None,
 		}
 	}
 }

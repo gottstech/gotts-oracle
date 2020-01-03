@@ -31,4 +31,4 @@ pub mod config;
 pub mod types;
 
 pub use crate::config::initial_setup_server;
-pub use crate::types::{ConfigError, ConfigMembers, GlobalConfig};
+pub use crate::types::{ConfigError, ConfigMembers, GlobalConfig, ServerConfig};
