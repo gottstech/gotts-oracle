@@ -36,9 +36,9 @@ pub type ClientResponseFuture<T> = Box<dyn Future<Item = T, Error = Error> + Sen
 /// response code checking.
 pub fn get<'a, T>(url: &'a str, api_secret: Option<String>) -> Result<T, Error>
 where
-    for<'de> T: Deserialize<'de>,
+	for<'de> T: Deserialize<'de>,
 {
-    handle_request(build_request(url, "GET", api_secret, None)?)
+	handle_request(build_request(url, "GET", api_secret, None)?)
 }
 
 /// Helper function to easily issue an async HTTP GET request against a given
@@ -46,21 +46,21 @@ where
 /// and response code checking.
 pub fn get_async<'a, T>(url: &'a str, api_secret: Option<String>) -> ClientResponseFuture<T>
 where
-    for<'de> T: Deserialize<'de> + Send + 'static,
+	for<'de> T: Deserialize<'de> + Send + 'static,
 {
-    match build_request(url, "GET", api_secret, None) {
-        Ok(req) => Box::new(handle_request_async(req)),
-        Err(e) => Box::new(err(e)),
-    }
+	match build_request(url, "GET", api_secret, None) {
+		Ok(req) => Box::new(handle_request_async(req)),
+		Err(e) => Box::new(err(e)),
+	}
 }
 
 /// Helper function to easily issue a HTTP GET request
 /// on a given URL that returns nothing. Handles request
 /// building and response code checking.
 pub fn get_no_ret(url: &str, api_secret: Option<String>) -> Result<(), Error> {
-    let req = build_request(url, "GET", api_secret, None)?;
-    send_request(req)?;
-    Ok(())
+	let req = build_request(url, "GET", api_secret, None)?;
+	send_request(req)?;
+	Ok(())
 }
 
 /// Helper function to easily issue a HTTP POST request with the provided JSON
@@ -69,11 +69,11 @@ pub fn get_no_ret(url: &str, api_secret: Option<String>) -> Result<(), Error> {
 /// checking.
 pub fn post<IN, OUT>(url: &str, api_secret: Option<String>, input: &IN) -> Result<OUT, Error>
 where
-    IN: Serialize,
-    for<'de> OUT: Deserialize<'de>,
+	IN: Serialize,
+	for<'de> OUT: Deserialize<'de>,
 {
-    let req = create_post_request(url, api_secret, input)?;
-    handle_request(req)
+	let req = create_post_request(url, api_secret, input)?;
+	handle_request(req)
 }
 
 /// Helper function to easily issue an async HTTP POST request with the
@@ -81,19 +81,19 @@ where
 /// request building, JSON serialization and deserialization, and response code
 /// checking.
 pub fn post_async<IN, OUT>(
-    url: &str,
-    input: &IN,
-    api_secret: Option<String>,
+	url: &str,
+	input: &IN,
+	api_secret: Option<String>,
 ) -> ClientResponseFuture<OUT>
 where
-    IN: Serialize,
-    OUT: Send + 'static,
-    for<'de> OUT: Deserialize<'de>,
+	IN: Serialize,
+	OUT: Send + 'static,
+	for<'de> OUT: Deserialize<'de>,
 {
-    match create_post_request(url, api_secret, input) {
-        Ok(req) => Box::new(handle_request_async(req)),
-        Err(e) => Box::new(err(e)),
-    }
+	match create_post_request(url, api_secret, input) {
+		Ok(req) => Box::new(handle_request_async(req)),
+		Err(e) => Box::new(err(e)),
+	}
 }
 
 /// Helper function to easily issue a HTTP POST request with the provided JSON
@@ -102,11 +102,11 @@ where
 /// checking.
 pub fn post_no_ret<IN>(url: &str, api_secret: Option<String>, input: &IN) -> Result<(), Error>
 where
-    IN: Serialize,
+	IN: Serialize,
 {
-    let req = create_post_request(url, api_secret, input)?;
-    send_request(req)?;
-    Ok(())
+	let req = create_post_request(url, api_secret, input)?;
+	send_request(req)?;
+	Ok(())
 }
 
 /// Helper function to easily issue an async HTTP POST request with the
@@ -114,120 +114,120 @@ where
 /// request building, JSON serialization and deserialization, and response code
 /// checking.
 pub fn post_no_ret_async<IN>(
-    url: &str,
-    api_secret: Option<String>,
-    input: &IN,
+	url: &str,
+	api_secret: Option<String>,
+	input: &IN,
 ) -> ClientResponseFuture<()>
 where
-    IN: Serialize,
+	IN: Serialize,
 {
-    match create_post_request(url, api_secret, input) {
-        Ok(req) => Box::new(send_request_async(req).and_then(|_| ok(()))),
-        Err(e) => Box::new(err(e)),
-    }
+	match create_post_request(url, api_secret, input) {
+		Ok(req) => Box::new(send_request_async(req).and_then(|_| ok(()))),
+		Err(e) => Box::new(err(e)),
+	}
 }
 
 fn build_request(
-    url: &str,
-    method: &str,
-    _api_secret: Option<String>,
-    body: Option<String>,
+	url: &str,
+	method: &str,
+	_api_secret: Option<String>,
+	body: Option<String>,
 ) -> Result<Request<Body>, Error> {
-    let uri = url.parse::<Uri>().map_err::<Error, _>(|e: InvalidUri| {
-        e.context(ErrorKind::Argument(format!("Invalid url {}", url)))
-            .into()
-    })?;
-    let mut builder = Request::builder();
+	let uri = url.parse::<Uri>().map_err::<Error, _>(|e: InvalidUri| {
+		e.context(ErrorKind::Argument(format!("Invalid url {}", url)))
+			.into()
+	})?;
+	let mut builder = Request::builder();
 
-    builder
-        .method(method)
-        .uri(uri)
-        .header(USER_AGENT, "gotts-oracle")
-        .header(ACCEPT, "application/json")
-        .header(CONTENT_TYPE, "application/json")
-        .body(match body {
-            None => Body::empty(),
-            Some(json) => json.into(),
-        })
-        .map_err(|e| {
-            ErrorKind::RequestError(format!("Bad request {} {}: {}", method, url, e)).into()
-        })
+	builder
+		.method(method)
+		.uri(uri)
+		.header(USER_AGENT, "gotts-oracle")
+		.header(ACCEPT, "application/json")
+		.header(CONTENT_TYPE, "application/json")
+		.body(match body {
+			None => Body::empty(),
+			Some(json) => json.into(),
+		})
+		.map_err(|e| {
+			ErrorKind::RequestError(format!("Bad request {} {}: {}", method, url, e)).into()
+		})
 }
 
 pub fn create_post_request<IN>(
-    url: &str,
-    api_secret: Option<String>,
-    input: &IN,
+	url: &str,
+	api_secret: Option<String>,
+	input: &IN,
 ) -> Result<Request<Body>, Error>
 where
-    IN: Serialize,
+	IN: Serialize,
 {
-    let json = serde_json::to_string(input).context(ErrorKind::Internal(
-        "Could not serialize data to JSON".to_owned(),
-    ))?;
-    build_request(url, "POST", api_secret, Some(json))
+	let json = serde_json::to_string(input).context(ErrorKind::Internal(
+		"Could not serialize data to JSON".to_owned(),
+	))?;
+	build_request(url, "POST", api_secret, Some(json))
 }
 
 fn handle_request<T>(req: Request<Body>) -> Result<T, Error>
 where
-    for<'de> T: Deserialize<'de>,
+	for<'de> T: Deserialize<'de>,
 {
-    let data = send_request(req)?;
-    serde_json::from_str(&data).map_err(|e| {
-        e.context(ErrorKind::ResponseError("Cannot parse response".to_owned()))
-            .into()
-    })
+	let data = send_request(req)?;
+	serde_json::from_str(&data).map_err(|e| {
+		e.context(ErrorKind::ResponseError("Cannot parse response".to_owned()))
+			.into()
+	})
 }
 
 fn handle_request_async<T>(req: Request<Body>) -> ClientResponseFuture<T>
 where
-    for<'de> T: Deserialize<'de> + Send + 'static,
+	for<'de> T: Deserialize<'de> + Send + 'static,
 {
-    Box::new(send_request_async(req).and_then(|data| {
-        serde_json::from_str(&data).map_err(|e| {
-            e.context(ErrorKind::ResponseError("Cannot parse response".to_owned()))
-                .into()
-        })
-    }))
+	Box::new(send_request_async(req).and_then(|data| {
+		serde_json::from_str(&data).map_err(|e| {
+			e.context(ErrorKind::ResponseError("Cannot parse response".to_owned()))
+				.into()
+		})
+	}))
 }
 
 fn send_request_async(req: Request<Body>) -> Box<dyn Future<Item = String, Error = Error> + Send> {
-    let https = hyper_rustls::HttpsConnector::new(1);
-    let mut connector = TimeoutConnector::new(https);
-    connector.set_connect_timeout(Some(Duration::from_secs(10)));
-    connector.set_read_timeout(Some(Duration::from_secs(10)));
-    connector.set_write_timeout(Some(Duration::from_secs(10)));
-    let client = Client::builder().build::<_, hyper::Body>(connector);
-    Box::new(
-        client
-            .request(req)
-            .map_err(|e| ErrorKind::RequestError(format!("Cannot make request: {}", e)).into())
-            .and_then(|resp| {
-                if !resp.status().is_success() {
-                    Either::A(err(ErrorKind::RequestError(format!(
-                        "Wrong response code: {} with data {:?}",
-                        resp.status(),
-                        resp.body()
-                    ))
-                    .into()))
-                } else {
-                    Either::B(
-                        resp.into_body()
-                            .map_err(|e| {
-                                ErrorKind::RequestError(format!("Cannot read response body: {}", e))
-                                    .into()
-                            })
-                            .concat2()
-                            .and_then(|ch| ok(String::from_utf8_lossy(&ch.to_vec()).to_string())),
-                    )
-                }
-            }),
-    )
+	let https = hyper_rustls::HttpsConnector::new(1);
+	let mut connector = TimeoutConnector::new(https);
+	connector.set_connect_timeout(Some(Duration::from_secs(10)));
+	connector.set_read_timeout(Some(Duration::from_secs(10)));
+	connector.set_write_timeout(Some(Duration::from_secs(10)));
+	let client = Client::builder().build::<_, hyper::Body>(connector);
+	Box::new(
+		client
+			.request(req)
+			.map_err(|e| ErrorKind::RequestError(format!("Cannot make request: {}", e)).into())
+			.and_then(|resp| {
+				if !resp.status().is_success() {
+					Either::A(err(ErrorKind::RequestError(format!(
+						"Wrong response code: {} with data {:?}",
+						resp.status(),
+						resp.body()
+					))
+					.into()))
+				} else {
+					Either::B(
+						resp.into_body()
+							.map_err(|e| {
+								ErrorKind::RequestError(format!("Cannot read response body: {}", e))
+									.into()
+							})
+							.concat2()
+							.and_then(|ch| ok(String::from_utf8_lossy(&ch.to_vec()).to_string())),
+					)
+				}
+			}),
+	)
 }
 
 pub fn send_request(req: Request<Body>) -> Result<String, Error> {
-    let task = send_request_async(req);
-    let mut rt =
-        Runtime::new().context(ErrorKind::Internal("can't create Tokio runtime".to_owned()))?;
-    Ok(rt.block_on(task)?)
+	let task = send_request_async(req);
+	let mut rt =
+		Runtime::new().context(ErrorKind::Internal("can't create Tokio runtime".to_owned()))?;
+	Ok(rt.block_on(task)?)
 }
