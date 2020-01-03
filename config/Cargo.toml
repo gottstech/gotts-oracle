@@ -1,0 +1,22 @@
+[package]
+name = "gotts_oracle_config"
+version = "0.1.0"
+authors = ["Gotts Developers <gotts.tech@lists.launchpad.net>"]
+description = "Gotts Oracles with some data vendors API clients such as Alpha Vantage"
+license = "Apache-2.0"
+repository = "https://github.com/gottstech/gotts-oracle"
+keywords = ["gotts", "oracle", "finance", "stocks", "alphavantage"]
+workspace = ".."
+edition = "2018"
+
+[dependencies]
+rand = "0.6"
+serde = "1"
+serde_derive = "1"
+toml = "0.4"
+dirs = "1.0.3"
+
+gotts_oracle_util = { path = "../util", version = "0.1.0" }
+
+[dev-dependencies]
+#pretty_assertions = "0.5.1"
