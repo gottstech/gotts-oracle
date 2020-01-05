@@ -57,6 +57,7 @@ where
 			ErrorKind::ResponseError(msg) => {
 				response(StatusCode::INTERNAL_SERVER_ERROR, msg.clone())
 			}
+			ErrorKind::LibOracle(msg) => response(StatusCode::INTERNAL_SERVER_ERROR, msg.clone()),
 		},
 	}
 }

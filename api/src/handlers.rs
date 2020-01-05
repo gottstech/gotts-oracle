@@ -15,8 +15,7 @@
 
 mod server_api;
 
-use self::server_api::ExchangeHandler;
-use self::server_api::IndexHandler;
+use self::server_api::{CompactHandler, ExchangeHandler, IndexHandler, RecentHandler};
 
 use crate::rest::*;
 use crate::router::{Router, RouterError};
@@ -24,8 +23,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::thread;
 
-extern crate gotts_oracle_alphavantage;
 use gotts_oracle_alphavantage as alphavantage;
+use gotts_oracle_lib::OracleBackend;
+use gotts_oracle_util::Mutex;
 
 /// Start all server HTTP handlers. Register all of them with Router
 /// and runs the corresponding HTTP server.
@@ -35,13 +35,17 @@ use gotts_oracle_alphavantage as alphavantage;
 /// weak references. Note that this likely means a crash if the handlers are
 /// used after a server shutdown (which should normally never happen,
 /// except during tests).
-pub fn start_rest_apis(
+pub fn start_rest_apis<T: ?Sized>(
+	oracle: Arc<Mutex<T>>,
 	client: Arc<alphavantage::Client>,
 	addr: String,
 	tls_config: Option<TLSConfig>,
-) -> Result<thread::JoinHandle<()>, Error> {
+) -> Result<thread::JoinHandle<()>, Error>
+where
+	T: OracleBackend + Send + Sync + 'static,
+{
 	let mut apis = ApiServer::new();
-	let router = build_router(client).expect("unable to build API router");
+	let router = build_router(oracle, client).expect("unable to build API router");
 
 	info!("Starting HTTP API server at {}.", addr);
 	let socket_addr: SocketAddr = addr.parse().expect("unable to parse socket address");
@@ -55,18 +59,30 @@ pub fn start_rest_apis(
 	}
 }
 
-pub fn build_router(client: Arc<alphavantage::Client>) -> Result<Router, RouterError> {
-	let route_list = vec!["exchange".to_string()];
+pub fn build_router<T: ?Sized>(
+	oracle: Arc<Mutex<T>>,
+	client: Arc<alphavantage::Client>,
+) -> Result<Router, RouterError>
+where
+	T: OracleBackend + Send + Sync + 'static,
+{
+	let route_list = vec![
+		"/v1/exchange".to_string(),
+		"/v1/recent".to_string(),
+		"/v1/compact".to_string(),
+	];
 
 	let index_handler = IndexHandler { list: route_list };
-	let exchange_handler = ExchangeHandler {
-		client: Arc::downgrade(&client),
-	};
+	let exchange_handler = ExchangeHandler::new(oracle.clone(), Arc::downgrade(&client));
+	let recent_handler = RecentHandler::new(oracle.clone());
+	let compact_handler = CompactHandler::new(oracle.clone());
 
 	let mut router = Router::new();
 
-	router.add_route("/", Arc::new(index_handler))?;
-	router.add_route("/exchange", Arc::new(exchange_handler))?;
+	router.add_route("/v1/", Arc::new(index_handler))?;
+	router.add_route("/v1/exchange", Arc::new(exchange_handler))?;
+	router.add_route("/v1/recent", Arc::new(recent_handler))?;
+	router.add_route("/v1/compact", Arc::new(compact_handler))?;
 
 	Ok(router)
 }

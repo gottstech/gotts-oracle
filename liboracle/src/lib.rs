@@ -1,4 +1,5 @@
-// Copyright 2019 The Gotts Developers
+// Copyright 2018 The Grin Developers
+// Modifications Copyright 2019 The Gotts Developers
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +13,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! AlphaVantage Lib
+//! Concrete implementations of Gotts Oracle
 
-#![deny(non_upper_case_globals)]
-#![deny(non_camel_case_types)]
-#![deny(non_snake_case)]
-#![deny(unused_mut)]
-
-extern crate chrono;
-extern crate chrono_tz;
-extern crate failure;
+#[macro_use]
+extern crate log;
+use failure;
 extern crate failure_derive;
-extern crate reqwest;
-extern crate serde;
-extern crate serde_json;
 
-mod client;
-mod deserialize;
+use gotts_oracle_alphavantage as alphavantage;
 
-pub mod exchange_rate;
-pub mod time_series;
+pub mod error;
+pub mod lmdb;
+pub mod oracle_ser;
+pub mod oracle_store;
+pub mod types;
 
-pub use crate::client::Client;
-pub use crate::client::Error;
-pub use crate::exchange_rate::ExchangeRateResult;
+pub use self::error::Error;
+pub use self::lmdb::{oracle_db_exists, LMDBBackend};
+pub use self::types::{OracleBackend, OracleInst};
