@@ -12,11 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use colored::*;
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
-
 #[macro_use]
 extern crate clap;
 #[macro_use]
@@ -26,7 +21,14 @@ use config::{GlobalConfig, ServerConfig};
 use gotts_oracle_alphavantage as alphavantage;
 use gotts_oracle_api as api;
 use gotts_oracle_config as config;
+use gotts_oracle_lib::{Error, LMDBBackend, OracleInst};
 use gotts_oracle_util::init_logger;
+use gotts_oracle_util::Mutex;
+
+use colored::*;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 
 // include build information
 pub mod built_info {
@@ -181,6 +183,9 @@ fn server_command(server_args: Option<&ArgMatches<'_>>, global_config: GlobalCon
 }
 
 fn start_server(config: ServerConfig) {
+	let oracle =
+		instantiate_oracle(config.clone(), "alpha_vantage").expect("instantiate_oracle failed");
+
 	//the api key integrated here is just for demo, with very limited access,
 	// please claim your own api key and set it as an environment variable before running.
 	// the free api key can be requested here: https://www.alphavantage.co/support/#api-key
@@ -207,7 +212,7 @@ fn start_server(config: ServerConfig) {
 		"\ngotts oracle is serving on {}",
 		oracle_bind_address.bright_green()
 	);
-	let res = api::start_rest_apis(shared_client.clone(), oracle_bind_address, None);
+	let res = api::start_rest_apis(oracle, shared_client.clone(), oracle_bind_address, None);
 
 	if let Ok(handle) = res {
 		handle.join().expect("The thread being joined has panicked");
@@ -219,4 +224,14 @@ fn start_server(config: ServerConfig) {
 	warn!("Shutting down...");
 	thread::sleep(Duration::from_millis(1000));
 	warn!("Shutdown complete.");
+}
+
+/// Helper to create an instance of the LMDB oracle
+pub fn instantiate_oracle(
+	oracle_config: ServerConfig,
+	account: &str,
+) -> Result<Arc<Mutex<dyn OracleInst>>, Error> {
+	let db_oracle = LMDBBackend::new(oracle_config.clone())?;
+	info!("An Oracle instance instantiated for {}", account);
+	Ok(Arc::new(Mutex::new(db_oracle)))
 }

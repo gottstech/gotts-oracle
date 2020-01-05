@@ -33,4 +33,6 @@ chrono = "0.4.7"
 chrono-tz = "0.5.1"
 
 gotts_oracle_alphavantage = { path = "../alphavantage", version = "0.1.0" }
+gotts_oracle_util         = { path = "../util", version = "0.1.0" }
+gotts_oracle_lib          = { path = "../liboracle", version = "0.1.0" }
 

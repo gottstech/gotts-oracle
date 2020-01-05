@@ -1,20 +1,19 @@
 [package]
-name = "gotts_oracle"
+name = "gotts_oracle_lib"
 version = "0.1.0"
 description = "Gotts Oracles with some data vendors API clients such as Alpha Vantage"
 license = "Apache License v2.0"
 repository = "https://github.com/gottstech/gotts-oracle"
 authors = ["Gotts Developers <gotts.tech@lists.launchpad.net>"]
 keywords = ["gotts", "oracle", "finance", "stocks", "alphavantage"]
-build = "src/build/build.rs"
 edition = "2018"
 
 [dependencies]
-clap = { version = "2.31", features = ["yaml"] }
-colored = "1.6"
 log = "0.4"
 blake2-rfc = "0.2"
 byteorder = "1"
+chrono = "0.4.7"
+chrono-tz = "0.5.1"
 failure = "0.1"
 failure_derive = "0.1"
 lmdb-zero = "0.4.4"
@@ -22,11 +21,7 @@ rand = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "0.7", features = ["serde", "v4"] }
-gotts_oracle_alphavantage = { path = "./alphavantage", version = "0.1.0" }
-gotts_oracle_api          = { path = "./api", version = "0.1.0" }
-gotts_oracle_config       = { path = "./config", version = "0.1.0" }
-gotts_oracle_util         = { path = "./util", version = "0.1.0" }
-gotts_oracle_lib          = { path = "./liboracle", version = "0.1.0" }
+gotts_oracle_alphavantage = { path = "../alphavantage", version = "0.1.0" }
+gotts_oracle_config       = { path = "../config", version = "0.1.0" }
+gotts_oracle_util         = { path = "../util", version = "0.1.0" }
 
-[build-dependencies]
-built = "0.3"

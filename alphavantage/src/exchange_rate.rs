@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use chrono::prelude::*;
+use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use failure::format_err;
 use serde::Deserialize;
@@ -37,7 +37,7 @@ pub struct ExchangeRate {
 	/// Value of the exchange rate.
 	pub rate: f64,
 	/// Date the exchange rate corresponds to.
-	pub date: DateTime<Tz>,
+	pub date: DateTime<Utc>,
 }
 
 /// Represents the exchange rate for a currency pair.
@@ -50,7 +50,7 @@ pub struct ExchangeRateResult {
 	/// Value of the exchange rate.
 	pub rate: f64,
 	/// Date the exchange rate corresponds to.
-	pub date: String,
+	pub date: DateTime<Utc>,
 }
 
 pub(crate) mod parser {
@@ -102,6 +102,7 @@ pub(crate) mod parser {
 			.map_err(|_| err_msg("error parsing time zone"))?;
 
 		let date = parse_date(&data.last_refreshed, time_zone)?;
+		let date = date.with_timezone(&Utc);
 
 		let exchange_rate = ExchangeRate {
 			from: Currency {

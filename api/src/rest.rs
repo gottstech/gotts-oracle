@@ -24,6 +24,7 @@ use crate::web::response;
 use failure::{Backtrace, Context, Fail, ResultExt};
 use futures::sync::oneshot;
 use futures::Stream;
+use gotts_oracle_lib;
 use hyper::rt::Future;
 use hyper::{rt, Body, Request, Server, StatusCode};
 use rustls;
@@ -54,6 +55,8 @@ pub enum ErrorKind {
 	RequestError(String),
 	#[fail(display = "ResponseError error: {}", _0)]
 	ResponseError(String),
+	#[fail(display = "LibOracle error: {}", _0)]
+	LibOracle(String),
 }
 
 impl Fail for Error {
@@ -89,6 +92,14 @@ impl From<ErrorKind> for Error {
 impl From<Context<ErrorKind>> for Error {
 	fn from(inner: Context<ErrorKind>) -> Error {
 		Error { inner: inner }
+	}
+}
+
+impl From<gotts_oracle_lib::Error> for Error {
+	fn from(error: gotts_oracle_lib::Error) -> Error {
+		Error {
+			inner: Context::new(ErrorKind::LibOracle(error.to_string())),
+		}
 	}
 }
 

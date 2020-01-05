@@ -104,7 +104,6 @@ pub struct ServerConfig {
 
 	/// Network address for the Rest API HTTP server.
 	pub api_http_addr: String,
-
 	/// Location of secret for basic auth on Rest API HTTP server.
 	pub api_secret_path: Option<String>,
 
