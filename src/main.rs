@@ -28,7 +28,7 @@ use gotts_oracle_util::init_logger;
 use gotts_oracle_util::Mutex;
 
 use colored::*;
-use chrono::{DateTime, Utc, Timelike};
+use chrono::{DateTime, Duration, Utc, Timelike};
 use futures;
 use futures::executor::block_on;
 use std::sync::Arc;
@@ -251,21 +251,46 @@ where
 	T: OracleBackend + Send + Sync + 'static,
 {
 	let currencies = vec!["USD", "EUR", "CNY", "JPY", "GBP", "CAD"];
+	let mut last_compact_time: DateTime<Utc> = Utc::now();
 	loop {
 		let mut f = Vec::new();
 		for from in currencies.clone() {
 			for to in currencies.clone() {
 				if from != to {
-					f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), from, to))
+					f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), from, to));
 				}
 			}
 		}
 
-		assert_eq!(f.len(), 30);
+		f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), "BTC", "USD"));
+		f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), "ETH", "USD"));
+
+		assert_eq!(f.len(), 32);
 		let f_all = futures::future::join_all(f);
 		f_all.await;
 		let now_time: DateTime<Utc> = Utc::now();
 		thread::sleep(time::Duration::from_secs(60 - now_time.second() as u64));
+
+		// And compact in every 60 minutes to avoid large history data storage
+		if now_time.signed_duration_since(last_compact_time) > Duration::minutes(60) {
+			last_compact_time = Utc::now();
+			let cutoff_time: DateTime<Utc> = Utc::now() - Duration::minutes(60);
+
+			let mut oracle = oracle.lock();
+			let mut batch = oracle.batch().expect("batch failed");
+			let mut total_cleaned = 0;
+			for rate in batch.iter() {
+				if rate.date < cutoff_time {
+					total_cleaned += 1;
+					let mut id = rate.from.clone();
+					id.push('2');
+					id.push_str(&rate.to);
+					batch.delete(&id, rate.date).expect("batch delete failed");
+				}
+			}
+			batch.commit().expect("batch commit failed");
+			debug!("daemon_alpha_vantage: compact get {} items cleaned", total_cleaned);
+		}
 	}
 }
 
