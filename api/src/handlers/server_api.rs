@@ -21,9 +21,7 @@ use hyper::{Body, Request};
 use std::sync::Arc;
 use std::sync::Weak;
 
-extern crate gotts_oracle_alphavantage;
-use alphavantage::exchange_rate::ExchangeRate;
-use alphavantage::exchange_rate::ExchangeRateResult;
+use alphavantage::exchange_rate::{ExchangeRate, ExchangeRateResult};
 use gotts_oracle_alphavantage as alphavantage;
 use gotts_oracle_lib::OracleBackend;
 use gotts_oracle_util::Mutex;

@@ -21,14 +21,18 @@ use config::{GlobalConfig, ServerConfig};
 use gotts_oracle_alphavantage as alphavantage;
 use gotts_oracle_api as api;
 use gotts_oracle_config as config;
-use gotts_oracle_lib::{Error, LMDBBackend, OracleInst};
+use gotts_oracle_lib::{Error, LMDBBackend, OracleBackend, OracleInst};
+use alphavantage::exchange_rate::ExchangeRateResult;
+
 use gotts_oracle_util::init_logger;
 use gotts_oracle_util::Mutex;
 
 use colored::*;
+use chrono::{DateTime, Utc, Timelike};
+use futures;
+use futures::executor::block_on;
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
+use std::{thread, time};
 
 // include build information
 pub mod built_info {
@@ -212,7 +216,9 @@ fn start_server(config: ServerConfig) {
 		"\ngotts oracle is serving on {}",
 		oracle_bind_address.bright_green()
 	);
-	let res = api::start_rest_apis(oracle, shared_client.clone(), oracle_bind_address, None);
+	let res = api::start_rest_apis(oracle.clone(), shared_client.clone(), oracle_bind_address, None);
+
+	block_on(daemon_alpha_vantage(oracle, shared_client));
 
 	if let Ok(handle) = res {
 		handle.join().expect("The thread being joined has panicked");
@@ -222,7 +228,7 @@ fn start_server(config: ServerConfig) {
 	// hangs around until sigint because the API server
 	// currently has no shutdown facility
 	warn!("Shutting down...");
-	thread::sleep(Duration::from_millis(1000));
+	thread::sleep(time::Duration::from_millis(1000));
 	warn!("Shutdown complete.");
 }
 
@@ -234,4 +240,65 @@ pub fn instantiate_oracle(
 	let db_oracle = LMDBBackend::new(oracle_config.clone())?;
 	info!("An Oracle instance instantiated for {}", account);
 	Ok(Arc::new(Mutex::new(db_oracle)))
+}
+
+/// Daemon for Alpha Vantage exchange data query
+async fn daemon_alpha_vantage<T: ?Sized>(
+	oracle: Arc<Mutex<T>>,
+	client: Arc<alphavantage::Client>,
+)
+where
+	T: OracleBackend + Send + Sync + 'static,
+{
+	let currencies = vec!["USD", "EUR", "CNY", "JPY", "GBP", "CAD"];
+	loop {
+		let mut f = Vec::new();
+		for from in currencies.clone() {
+			for to in currencies.clone() {
+				if from != to {
+					f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), from, to))
+				}
+			}
+		}
+
+		assert_eq!(f.len(), 30);
+		let f_all = futures::future::join_all(f);
+		f_all.await;
+		let now_time: DateTime<Utc> = Utc::now();
+		thread::sleep(time::Duration::from_secs(60 - now_time.second() as u64));
+	}
+}
+
+async fn query_once_alpha_vantage<T: ?Sized>(
+	oracle: Arc<Mutex<T>>,
+	client: Arc<alphavantage::Client>,
+	from: &str,
+	to: &str,
+)
+where
+	T: OracleBackend + Send + Sync + 'static,
+{
+	let exchange_result = client.get_exchange_rate(from, to);
+	let exchange_rate = match exchange_result {
+		Ok(result) => result,
+		Err(_e) => {
+			error!("query alphavantage failed on {}2{}", from, to);
+			return;
+		}
+	};
+
+	let exchange_rate_result = ExchangeRateResult {
+		from: exchange_rate.from.code.clone(),
+		to: exchange_rate.to.code.clone(),
+		rate: exchange_rate.rate,
+		date: exchange_rate.date,
+	};
+
+	// save the query data into local database for aggregation
+	{
+		let mut oracle = oracle.lock();
+		let mut batch = oracle.batch().expect("batch failed");
+		batch.save(exchange_rate_result.date, exchange_rate_result.clone()).expect("batch save failed");
+		batch.commit().expect("batch commit failed");
+	}
 }
