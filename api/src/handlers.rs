@@ -15,7 +15,9 @@
 
 mod server_api;
 
-use self::server_api::{CompactHandler, ExchangeHandler, IndexHandler, RecentHandler};
+use self::server_api::{
+	AggregateHandler, CompactHandler, ExchangeHandler, IndexHandler, RecentHandler,
+};
 
 use crate::rest::*;
 use crate::router::{Router, RouterError};
@@ -70,12 +72,14 @@ where
 		"/v1/exchange".to_string(),
 		"/v1/recent".to_string(),
 		"/v1/compact".to_string(),
+		"/v1/aggregated".to_string(),
 	];
 
 	let index_handler = IndexHandler { list: route_list };
 	let exchange_handler = ExchangeHandler::new(oracle.clone(), Arc::downgrade(&client));
 	let recent_handler = RecentHandler::new(oracle.clone());
 	let compact_handler = CompactHandler::new(oracle.clone());
+	let aggregated_handler = AggregateHandler::new(oracle.clone());
 
 	let mut router = Router::new();
 
@@ -83,6 +87,7 @@ where
 	router.add_route("/v1/exchange", Arc::new(exchange_handler))?;
 	router.add_route("/v1/recent", Arc::new(recent_handler))?;
 	router.add_route("/v1/compact", Arc::new(compact_handler))?;
+	router.add_route("/v1/aggregated", Arc::new(aggregated_handler))?;
 
 	Ok(router)
 }

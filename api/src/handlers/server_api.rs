@@ -218,3 +218,65 @@ where
 		result_to_response(self.compact(req))
 	}
 }
+
+/// Gets aggregated exchange rates
+/// GET /v1/aggregated
+///
+pub struct AggregateHandler<T: ?Sized>
+where
+	T: OracleBackend + Send + Sync + 'static,
+{
+	/// Oracle instance
+	pub oracle: Arc<Mutex<T>>,
+}
+
+impl<T: ?Sized> AggregateHandler<T>
+where
+	T: OracleBackend + Send + Sync + 'static,
+{
+	pub fn new(oracle: Arc<Mutex<T>>) -> AggregateHandler<T> {
+		AggregateHandler { oracle }
+	}
+
+	fn get_aggregated(&self, _req: Request<Body>) -> Result<Vec<ExchangeRateResult>, Error> {
+		let oracle = self.oracle.lock();
+		let mut rates: Vec<ExchangeRateResult> = oracle.iter().collect();
+		rates.sort_by_key(|rate| std::cmp::Reverse(rate.date.clone()));
+
+		let currencies = vec!["USD", "EUR", "CNY", "JPY", "GBP", "CAD"];
+		let mut aggregated: Vec<ExchangeRateResult> = Vec::new();
+		for from in currencies.clone() {
+			for to in currencies.clone() {
+				if from != to {
+					let index = rates
+						.iter()
+						.position(|r| r.from == from && r.to == to)
+						.ok_or(ErrorKind::NotFound)?;
+					aggregated.push(rates[index].clone());
+				}
+			}
+		}
+
+		let index = rates
+			.iter()
+			.position(|r| r.from == "BTC" && r.to == "USD")
+			.ok_or(ErrorKind::NotFound)?;
+		aggregated.push(rates[index].clone());
+		let index = rates
+			.iter()
+			.position(|r| r.from == "ETH" && r.to == "USD")
+			.ok_or(ErrorKind::NotFound)?;
+		aggregated.push(rates[index].clone());
+
+		Ok(aggregated)
+	}
+}
+
+impl<T: ?Sized> Handler for AggregateHandler<T>
+where
+	T: OracleBackend + Send + Sync + 'static,
+{
+	fn get(&self, req: Request<Body>) -> ResponseFuture {
+		result_to_response(self.get_aggregated(req))
+	}
+}
