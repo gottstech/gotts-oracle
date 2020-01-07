@@ -43,6 +43,7 @@ impl Handler for IndexHandler {
 
 /// Gets Exchange Rate
 /// GET /v1/exchange?from=USD&to=CNY
+/// POST /v1/exchange?from=USD&to=CNY
 ///
 pub struct ExchangeHandler<T: ?Sized>
 where
@@ -112,11 +113,16 @@ where
 	fn get(&self, req: Request<Body>) -> ResponseFuture {
 		result_to_response(self.get_rate(req))
 	}
+
+	fn post(&self, req: Request<Body>) -> ResponseFuture {
+		result_to_response(self.get_rate(req))
+	}
 }
 
 /// Gets recent exchange rates
 /// GET /v1/recent?prefix=USD&items=16
 /// GET /v1/recent?prefix=USD2CNY&items=16
+/// POST /v1/recent?prefix=USD&items=16
 ///
 pub struct RecentHandler<T: ?Sized>
 where
@@ -162,10 +168,15 @@ where
 	fn get(&self, req: Request<Body>) -> ResponseFuture {
 		result_to_response(self.get_recent(req))
 	}
+
+	fn post(&self, req: Request<Body>) -> ResponseFuture {
+		result_to_response(self.get_recent(req))
+	}
 }
 
 /// Compact the exchange rate data, clean the data beyond x minutes.
 /// GET /v1/compact?mins=10
+/// POST /v1/compact?mins=10
 ///
 pub struct CompactHandler<T: ?Sized>
 where
@@ -217,10 +228,15 @@ where
 	fn get(&self, req: Request<Body>) -> ResponseFuture {
 		result_to_response(self.compact(req))
 	}
+
+	fn post(&self, req: Request<Body>) -> ResponseFuture {
+		result_to_response(self.compact(req))
+	}
 }
 
 /// Gets aggregated exchange rates
 /// GET /v1/aggregated
+/// POST /v1/aggregated
 ///
 pub struct AggregateHandler<T: ?Sized>
 where
@@ -277,6 +293,10 @@ where
 	T: OracleBackend + Send + Sync + 'static,
 {
 	fn get(&self, req: Request<Body>) -> ResponseFuture {
+		result_to_response(self.get_aggregated(req))
+	}
+
+	fn post(&self, req: Request<Body>) -> ResponseFuture {
 		result_to_response(self.get_aggregated(req))
 	}
 }

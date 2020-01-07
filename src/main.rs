@@ -16,19 +16,19 @@
 extern crate clap;
 #[macro_use]
 extern crate log;
+use alphavantage::exchange_rate::ExchangeRateResult;
 use clap::{App, ArgMatches};
 use config::{GlobalConfig, ServerConfig};
 use gotts_oracle_alphavantage as alphavantage;
 use gotts_oracle_api as api;
 use gotts_oracle_config as config;
 use gotts_oracle_lib::{Error, LMDBBackend, OracleBackend, OracleInst};
-use alphavantage::exchange_rate::ExchangeRateResult;
 
 use gotts_oracle_util::init_logger;
 use gotts_oracle_util::Mutex;
 
+use chrono::{DateTime, Duration, Timelike, Utc};
 use colored::*;
-use chrono::{DateTime, Duration, Utc, Timelike};
 use futures;
 use futures::executor::block_on;
 use std::sync::Arc;
@@ -216,7 +216,12 @@ fn start_server(config: ServerConfig) {
 		"\ngotts oracle is serving on {}",
 		oracle_bind_address.bright_green()
 	);
-	let res = api::start_rest_apis(oracle.clone(), shared_client.clone(), oracle_bind_address, None);
+	let res = api::start_rest_apis(
+		oracle.clone(),
+		shared_client.clone(),
+		oracle_bind_address,
+		None,
+	);
 
 	block_on(daemon_alpha_vantage(oracle, shared_client));
 
@@ -243,38 +248,50 @@ pub fn instantiate_oracle(
 }
 
 /// Daemon for Alpha Vantage exchange data query
-async fn daemon_alpha_vantage<T: ?Sized>(
-	oracle: Arc<Mutex<T>>,
-	client: Arc<alphavantage::Client>,
-)
+async fn daemon_alpha_vantage<T: ?Sized>(oracle: Arc<Mutex<T>>, client: Arc<alphavantage::Client>)
 where
 	T: OracleBackend + Send + Sync + 'static,
 {
 	let currencies = vec!["USD", "EUR", "CNY", "JPY", "GBP", "CAD"];
-	let mut last_compact_time: DateTime<Utc> = Utc::now();
+	let compact_interval = Duration::minutes(60);
+	let mut last_compact_time: DateTime<Utc> = Utc::now() - compact_interval;
 	loop {
 		let mut f = Vec::new();
 		for from in currencies.clone() {
 			for to in currencies.clone() {
 				if from != to {
-					f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), from, to));
+					f.push(query_once_alpha_vantage(
+						oracle.clone(),
+						client.clone(),
+						from,
+						to,
+					));
 				}
 			}
 		}
 
-		f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), "BTC", "USD"));
-		f.push(query_once_alpha_vantage(oracle.clone(), client.clone(), "ETH", "USD"));
+		f.push(query_once_alpha_vantage(
+			oracle.clone(),
+			client.clone(),
+			"BTC",
+			"USD",
+		));
+		f.push(query_once_alpha_vantage(
+			oracle.clone(),
+			client.clone(),
+			"ETH",
+			"USD",
+		));
 
 		assert_eq!(f.len(), 32);
 		let f_all = futures::future::join_all(f);
 		f_all.await;
-		let now_time: DateTime<Utc> = Utc::now();
-		thread::sleep(time::Duration::from_secs(60 - now_time.second() as u64));
 
-		// And compact in every 60 minutes to avoid large history data storage
-		if now_time.signed_duration_since(last_compact_time) > Duration::minutes(60) {
+		// And compact in every 'compact_interval' minutes to avoid large history data storage
+		let now_time: DateTime<Utc> = Utc::now();
+		if now_time.signed_duration_since(last_compact_time) > compact_interval {
 			last_compact_time = Utc::now();
-			let cutoff_time: DateTime<Utc> = Utc::now() - Duration::minutes(60);
+			let cutoff_time: DateTime<Utc> = Utc::now() - compact_interval;
 
 			let mut oracle = oracle.lock();
 			let mut batch = oracle.batch().expect("batch failed");
@@ -289,7 +306,12 @@ where
 				}
 			}
 			batch.commit().expect("batch commit failed");
-			debug!("daemon_alpha_vantage: compact get {} items cleaned", total_cleaned);
+			debug!(
+				"daemon_alpha_vantage: compact get {} items cleaned",
+				total_cleaned
+			);
+		} else {
+			thread::sleep(time::Duration::from_secs(60 - now_time.second() as u64));
 		}
 	}
 }
@@ -299,8 +321,7 @@ async fn query_once_alpha_vantage<T: ?Sized>(
 	client: Arc<alphavantage::Client>,
 	from: &str,
 	to: &str,
-)
-where
+) where
 	T: OracleBackend + Send + Sync + 'static,
 {
 	let exchange_result = client.get_exchange_rate(from, to);
@@ -323,7 +344,9 @@ where
 	{
 		let mut oracle = oracle.lock();
 		let mut batch = oracle.batch().expect("batch failed");
-		batch.save(exchange_rate_result.date, exchange_rate_result.clone()).expect("batch save failed");
+		batch
+			.save(exchange_rate_result.date, exchange_rate_result.clone())
+			.expect("batch save failed");
 		batch.commit().expect("batch commit failed");
 	}
 }
