@@ -15,8 +15,7 @@
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use failure::format_err;
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Represents a currency.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
