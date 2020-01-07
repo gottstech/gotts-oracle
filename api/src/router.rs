@@ -18,6 +18,7 @@ use hyper;
 use hyper::rt::Future;
 use hyper::service::{NewService, Service};
 use hyper::{Body, Method, Request, Response, StatusCode};
+use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
@@ -86,7 +87,7 @@ pub trait Handler {
 	}
 }
 
-#[derive(Fail, Debug)]
+#[derive(Clone, Fail, Eq, Debug, PartialEq, Serialize, Deserialize)]
 pub enum RouterError {
 	#[fail(display = "Route already exists")]
 	RouteAlreadyExists,

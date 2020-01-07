@@ -25,6 +25,8 @@ extern crate log;
 #[macro_use]
 mod web;
 pub mod client;
+mod foreign;
+mod foreign_rpc;
 mod handlers;
 mod rest;
 mod router;
