@@ -31,6 +31,7 @@ use chrono::{DateTime, Duration, Timelike, Utc};
 use colored::*;
 use futures;
 use futures::executor::block_on;
+use gotts_oracle_alphavantage::exchange_rate::ExchangeRate;
 use std::sync::Arc;
 use std::{thread, time};
 
@@ -252,40 +253,33 @@ async fn daemon_alpha_vantage<T: ?Sized>(oracle: Arc<Mutex<T>>, client: Arc<alph
 where
 	T: OracleBackend + Send + Sync + 'static,
 {
-	let currencies = vec!["USD", "EUR", "CNY", "JPY", "GBP", "CAD"];
+	let currencies_a = vec!["EUR", "GBP", "BTC", "ETH"];
+	let currencies_b = vec!["CNY", "JPY", "CAD"];
+	let base_currencies_number = currencies_a.len() + currencies_b.len();
 	let compact_interval = Duration::minutes(60);
 	let mut last_compact_time: DateTime<Utc> = Utc::now() - compact_interval;
 	loop {
-		let mut f = Vec::new();
-		for from in currencies.clone() {
-			for to in currencies.clone() {
-				if from != to {
-					f.push(query_once_alpha_vantage(
-						oracle.clone(),
-						client.clone(),
-						from,
-						to,
-					));
-				}
-			}
+		let mut f = Vec::with_capacity(base_currencies_number);
+		for from in &currencies_a {
+			f.push(query_once_alpha_vantage(
+				oracle.clone(),
+				client.clone(),
+				from,
+				"USD",
+			));
+		}
+		for to in &currencies_b {
+			f.push(query_once_alpha_vantage(
+				oracle.clone(),
+				client.clone(),
+				"USD",
+				to,
+			));
 		}
 
-		f.push(query_once_alpha_vantage(
-			oracle.clone(),
-			client.clone(),
-			"BTC",
-			"USD",
-		));
-		f.push(query_once_alpha_vantage(
-			oracle.clone(),
-			client.clone(),
-			"ETH",
-			"USD",
-		));
-
-		assert_eq!(f.len(), 32);
 		let f_all = futures::future::join_all(f);
 		f_all.await;
+		debug!("daemon_alpha_vantage: query");
 
 		// And compact in every 'compact_interval' minutes to avoid large history data storage
 		let now_time: DateTime<Utc> = Utc::now();
@@ -310,9 +304,10 @@ where
 				"daemon_alpha_vantage: compact get {} items cleaned",
 				total_cleaned
 			);
-		} else {
-			thread::sleep(time::Duration::from_secs(60 - now_time.second() as u64));
 		}
+
+		let now_time: DateTime<Utc> = Utc::now();
+		thread::sleep(time::Duration::from_secs(60 - now_time.second() as u64));
 	}
 }
 
@@ -324,14 +319,29 @@ async fn query_once_alpha_vantage<T: ?Sized>(
 ) where
 	T: OracleBackend + Send + Sync + 'static,
 {
-	let exchange_result = client.get_exchange_rate(from, to);
-	let exchange_rate = match exchange_result {
-		Ok(result) => result,
-		Err(_e) => {
-			error!("query alphavantage failed on {}2{}", from, to);
-			return;
-		}
-	};
+	trace!("querying {}2{}", from, to);
+	let mut retries = 0;
+	let mut is_success = false;
+	let mut exchange_rate = ExchangeRate::default();
+	while !is_success {
+		let exchange_result = client.get_exchange_rate(from, to);
+		match exchange_result {
+			Ok(result) => {
+				is_success = true;
+				exchange_rate = result;
+			}
+			Err(_e) => {
+				error!(
+					"query alphavantage failed on {}2{}, retires={}",
+					from, to, retries
+				);
+				if retries >= 3 {
+					return;
+				}
+				retries += 1;
+			}
+		};
+	}
 
 	let exchange_rate_result = ExchangeRateResult {
 		from: exchange_rate.from.code.clone(),

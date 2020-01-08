@@ -39,6 +39,23 @@ pub struct ExchangeRate {
 	pub date: DateTime<Utc>,
 }
 
+impl Default for ExchangeRate {
+	fn default() -> ExchangeRate {
+		ExchangeRate {
+			from: Currency {
+				name: "NA".to_string(),
+				code: "NA".to_string(),
+			},
+			to: Currency {
+				name: "NA".to_string(),
+				code: "NA".to_string(),
+			},
+			rate: 1f64,
+			date: Utc::now(),
+		}
+	}
+}
+
 /// Represents the exchange rate for a currency pair.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExchangeRateResult {
