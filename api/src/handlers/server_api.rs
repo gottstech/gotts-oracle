@@ -259,30 +259,24 @@ where
 		let mut rates: Vec<ExchangeRateResult> = oracle.iter().collect();
 		rates.sort_by_key(|rate| std::cmp::Reverse(rate.date.clone()));
 
-		let currencies = vec!["USD", "EUR", "CNY", "JPY", "GBP", "CAD"];
-		let mut aggregated: Vec<ExchangeRateResult> = Vec::new();
-		for from in currencies.clone() {
-			for to in currencies.clone() {
-				if from != to {
-					let index = rates
-						.iter()
-						.position(|r| r.from == from && r.to == to)
-						.ok_or(ErrorKind::NotFound)?;
-					aggregated.push(rates[index].clone());
-				}
-			}
+		let currencies_a = vec!["EUR", "GBP", "BTC", "ETH"];
+		let currencies_b = vec!["CNY", "JPY", "CAD"];
+		let mut aggregated: Vec<ExchangeRateResult> =
+			Vec::with_capacity(currencies_a.len() + currencies_b.len());
+		for from in currencies_a {
+			let index = rates
+				.iter()
+				.position(|r| r.from == from && r.to == "USD")
+				.ok_or(ErrorKind::NotFound)?;
+			aggregated.push(rates[index].clone());
 		}
-
-		let index = rates
-			.iter()
-			.position(|r| r.from == "BTC" && r.to == "USD")
-			.ok_or(ErrorKind::NotFound)?;
-		aggregated.push(rates[index].clone());
-		let index = rates
-			.iter()
-			.position(|r| r.from == "ETH" && r.to == "USD")
-			.ok_or(ErrorKind::NotFound)?;
-		aggregated.push(rates[index].clone());
+		for to in currencies_b {
+			let index = rates
+				.iter()
+				.position(|r| r.from == "USD" && r.to == to)
+				.ok_or(ErrorKind::NotFound)?;
+			aggregated.push(rates[index].clone());
+		}
 
 		Ok(aggregated)
 	}
